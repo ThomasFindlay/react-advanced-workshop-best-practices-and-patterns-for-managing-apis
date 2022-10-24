@@ -31,13 +31,14 @@ const Quotes = props => {
       if (typeof abortRef.current === "function") {
         abortRef.current();
       }
-      const controller = new AbortController();
-      abortRef.current = controller.abort.bind(controller);
+
       setFetchQuotesStatus(PENDING);
       const quotesData = await fetchQuotes(
         { page },
         {
-          signal: controller.signal,
+          abort: canceller => {
+            abortRef.current = canceller;
+          },
         }
       );
 
@@ -46,12 +47,12 @@ const Quotes = props => {
       setQuotes(quotesData.data);
       setFetchQuotesStatus(SUCCESS);
     } catch (error) {
-      setFetchQuotesStatus(ERROR);
-
-      if (error.name === "CanceledError") {
+      console.error(error);
+      if (error.aborted) {
         console.warn(`Request for page ${page} was cancelled`);
       } else {
         console.error(error);
+        setFetchQuotesStatus(ERROR);
       }
     }
   };
