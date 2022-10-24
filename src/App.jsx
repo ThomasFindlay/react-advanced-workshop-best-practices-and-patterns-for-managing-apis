@@ -4,11 +4,9 @@ import Quotes from "./components/Quotes.jsx";
 function App() {
   return (
     <div className="App">
-      <div className="App">
-        <main className="container mx-auto mt-8 ">
-          <Quotes />
-        </main>
-      </div>
+      <main className="container mx-auto mt-8 ">
+        <Quotes />
+      </main>
     </div>
   );
 }
