@@ -1,17 +1,33 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import axios from "axios";
 import Pagination from "./Pagination";
 
 const Quotes = props => {
   const [quotes, setQuotes] = useState([]);
   const [page, setPage] = useState(1);
+  const abortRef = useRef({});
 
-  const initFetchQuotes = async () => {
-    const quotesData = await axios.get(
-      `http://localhost:4000/quotes?_page=${page}`
-    );
-    console.log("data", quotesData);
-    setQuotes(quotesData.data);
+  const initFetchQuotes = async page => {
+    try {
+      if (typeof abortRef.current === "function") {
+        abortRef.current();
+      }
+      const controller = new AbortController();
+      abortRef.current = controller.abort.bind(controller);
+      const quotesData = await axios.get(
+        `http://localhost:4000/quotes?_page=${page}`,
+        {
+          signal: controller.signal,
+        }
+      );
+      setQuotes(quotesData.data);
+    } catch (error) {
+      if (error.name === "CanceledError") {
+        console.warn(`Request for page ${page} was cancelled`);
+      } else {
+        console.error(error);
+      }
+    }
   };
 
   const onNext = () => {
@@ -24,7 +40,7 @@ const Quotes = props => {
   };
 
   useEffect(() => {
-    initFetchQuotes();
+    initFetchQuotes(page);
   }, [page]);
 
   return (
