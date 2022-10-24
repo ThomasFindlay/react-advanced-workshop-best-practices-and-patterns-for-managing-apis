@@ -1,59 +1,56 @@
-import { useEffect, useState, useRef } from "react";
+import { useState } from "react";
 import Pagination from "./Pagination";
 import LazyLoader from "./LazyLoader";
 import { fetchQuotes, postQuote } from "../api/quote.api";
-
-const IDLE = "IDLE";
-const PENDING = "PENDING";
-const SUCCESS = "SUCCESS";
-const ERROR = "ERROR";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
 const Quotes = props => {
-  const [quotes, setQuotes] = useState([]);
   const [page, setPage] = useState(1);
   const [form, setForm] = useState({
     quote: "",
     author: "",
   });
+  const queryClient = useQueryClient();
+  const {
+    data: quotes = [],
+    isLoading: isFetchQuotesLoading,
+    isError: isFetchQuotesError,
+    refetch,
+  } = useQuery(["quotes", page], async context => {
+    queryClient.cancelQueries(["quotes", page]);
+    const response = await fetchQuotes({ page }, { signal: context.signal });
+    return response.data;
+  });
 
-  const abortRef = useRef({});
-  const [fetchQuotesStatus, setFetchQuotesStatus] = useState(IDLE);
+  const {
+    mutate: initPostQuote,
+    isLoading: isPostQuoteLoading,
+    isError: isPostQuoteError,
+  } = useMutation(
+    async payload => {
+      return postQuote(payload);
+    },
+    {
+      keepPreviousData: true,
+      onSuccess: context => {
+        setForm({
+          quote: "",
+          author: "",
+        });
+        queryClient.invalidateQueries(["quotes", 1]);
+        // queryClient.setQueryData(["quotes", 1], currentQuotes => [
+        //   context.data,
+        //   ...currentQuotes,
+        // ]);
+      },
+    }
+  );
 
   const onFormChange = e => {
     setForm(state => ({
       ...state,
       [e.target.name]: e.target.value,
     }));
-  };
-
-  const initFetchQuotes = async page => {
-    try {
-      if (typeof abortRef.current === "function") {
-        abortRef.current();
-      }
-      const controller = new AbortController();
-      abortRef.current = controller.abort.bind(controller);
-      setFetchQuotesStatus(PENDING);
-      const quotesData = await fetchQuotes(
-        { page },
-        {
-          signal: controller.signal,
-        }
-      );
-
-      const num = Math.random();
-      if (num < 0.5) throw new Error("Oops, something went wrong");
-      setQuotes(quotesData.data);
-      setFetchQuotesStatus(SUCCESS);
-    } catch (error) {
-      setFetchQuotesStatus(ERROR);
-
-      if (error.name === "CanceledError") {
-        console.warn(`Request for page ${page} was cancelled`);
-      } else {
-        console.error(error);
-      }
-    }
   };
 
   const onNext = () => {
@@ -67,27 +64,9 @@ const Quotes = props => {
 
   const onSubmitQuote = async e => {
     e.preventDefault();
-    const response = await postQuote(form);
-    if (response.data.id) {
-      const { id, quote, author } = response.data;
-      setQuotes(quotes => [
-        {
-          id,
-          quote,
-          author,
-        },
-        ...quotes,
-      ]);
-    }
-    setForm({
-      quote: "",
-      author: "",
-    });
+    if (!form.quote || !form.author) return;
+    initPostQuote(form);
   };
-
-  useEffect(() => {
-    initFetchQuotes(page);
-  }, [page]);
 
   return (
     <div className="max-w-xl mx-auto">
@@ -107,11 +86,15 @@ const Quotes = props => {
             name="author"
             onChange={onFormChange}
           />
+          {isPostQuoteError ? (
+            <span className="text-red-700">Submit error</span>
+          ) : null}
           <button
             className="px-4 py-3 bg-blue-600 text-blue-50"
             onClick={onSubmitQuote}
+            disabled={isPostQuoteLoading}
           >
-            Submit Quote
+            {isPostQuoteLoading ? "Loading..." : "Submit Quote"}
           </button>
         </form>
       </div>
@@ -135,16 +118,13 @@ const Quotes = props => {
           );
         })}
       </div>
-      <LazyLoader show={fetchQuotesStatus === PENDING}>
+      <LazyLoader show={isFetchQuotesLoading}>
         <p className="text-center">Loading data...</p>
       </LazyLoader>
-      {fetchQuotesStatus === ERROR ? (
+      {isFetchQuotesError ? (
         <div className="text-center my-4 space-y-4">
           <p className="text-red-700">Error loading data.</p>
-          <button
-            className="bg-blue-700 text-blue-100 p-4"
-            onClick={() => initFetchQuotes(page)}
-          >
+          <button className="bg-blue-700 text-blue-100 p-4" onClick={refetch}>
             Try again
           </button>
         </div>
