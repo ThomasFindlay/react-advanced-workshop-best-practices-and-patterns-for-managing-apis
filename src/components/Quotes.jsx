@@ -46,12 +46,11 @@ const Quotes = props => {
       setQuotes(quotesData.data);
       setFetchQuotesStatus(SUCCESS);
     } catch (error) {
-      setFetchQuotesStatus(ERROR);
-
       if (error.name === "CanceledError") {
         console.warn(`Request for page ${page} was cancelled`);
       } else {
         console.error(error);
+        setFetchQuotesStatus(ERROR);
       }
     }
   };
