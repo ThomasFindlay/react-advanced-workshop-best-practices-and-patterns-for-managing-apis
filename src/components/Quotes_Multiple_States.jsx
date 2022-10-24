@@ -2,16 +2,12 @@ import { useEffect, useState, useRef } from "react";
 import axios from "axios";
 import Pagination from "./Pagination";
 
-const IDLE = "IDLE";
-const PENDING = "PENDING";
-const SUCCESS = "SUCCESS";
-const ERROR = "ERROR";
-
 const Quotes = props => {
   const [quotes, setQuotes] = useState([]);
   const [page, setPage] = useState(1);
   const abortRef = useRef({});
-  const [fetchQuotesStatus, setFetchQuotesStatus] = useState(IDLE);
+  const [isFetchQuotesError, setIsFetchQuotesError] = useState(false);
+  const [isFetchingQuotes, setIsFetchingQuotes] = useState(false);
 
   const initFetchQuotes = async page => {
     try {
@@ -20,7 +16,8 @@ const Quotes = props => {
       }
       const controller = new AbortController();
       abortRef.current = controller.abort.bind(controller);
-      setFetchQuotesStatus(PENDING);
+      setIsFetchQuotesError(false);
+      setIsFetchingQuotes(true);
       const quotesData = await axios.get(
         `http://localhost:4000/quotes?_page=${page}`,
         {
@@ -30,15 +27,15 @@ const Quotes = props => {
       const num = Math.random();
       if (num < 0.5) throw new Error("Oops, something went wrong");
       setQuotes(quotesData.data);
-      setFetchQuotesStatus(SUCCESS);
     } catch (error) {
-      setFetchQuotesStatus(ERROR);
-
+      setIsFetchQuotesError(true);
       if (error.name === "CanceledError") {
         console.warn(`Request for page ${page} was cancelled`);
       } else {
         console.error(error);
       }
+    } finally {
+      setIsFetchingQuotes(false);
     }
   };
 
@@ -78,10 +75,8 @@ const Quotes = props => {
           );
         })}
       </div>
-      {fetchQuotesStatus === PENDING ? (
-        <p className="text-center">Loading data...</p>
-      ) : null}
-      {fetchQuotesStatus === ERROR ? (
+      {isFetchingQuotes ? <p className="text-center">Loading data...</p> : null}
+      {isFetchQuotesError ? (
         <div className="text-center my-4 space-y-4">
           <p className="text-red-700">Error loading data.</p>
           <button
