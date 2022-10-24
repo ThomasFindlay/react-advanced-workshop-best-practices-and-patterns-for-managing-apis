@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef } from "react";
 import axios from "axios";
 import Pagination from "./Pagination";
+import LazyLoader from "./LazyLoader";
 
 const IDLE = "IDLE";
 const PENDING = "PENDING";
@@ -78,9 +79,9 @@ const Quotes = props => {
           );
         })}
       </div>
-      {fetchQuotesStatus === PENDING ? (
+      <LazyLoader show={fetchQuotesStatus === PENDING}>
         <p className="text-center">Loading data...</p>
-      ) : null}
+      </LazyLoader>
       {fetchQuotesStatus === ERROR ? (
         <div className="text-center my-4 space-y-4">
           <p className="text-red-700">Error loading data.</p>
