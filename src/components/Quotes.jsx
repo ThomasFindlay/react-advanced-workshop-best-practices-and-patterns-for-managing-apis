@@ -16,11 +16,17 @@ const Quotes = props => {
     isLoading: isFetchQuotesLoading,
     isError: isFetchQuotesError,
     refetch,
-  } = useQuery(["quotes", page], async context => {
-    queryClient.cancelQueries(["quotes", page]);
-    const response = await fetchQuotes({ page }, { signal: context.signal });
-    return response.data;
-  });
+  } = useQuery(
+    ["quotes", page],
+    async context => {
+      queryClient.cancelQueries(["quotes", page]);
+      const response = await fetchQuotes({ page }, { signal: context.signal });
+      return response.data;
+    },
+    {
+      keepPreviousData: true,
+    }
+  );
 
   const {
     mutate: initPostQuote,
@@ -31,7 +37,6 @@ const Quotes = props => {
       return postQuote(payload);
     },
     {
-      keepPreviousData: true,
       onSuccess: context => {
         setForm({
           quote: "",
