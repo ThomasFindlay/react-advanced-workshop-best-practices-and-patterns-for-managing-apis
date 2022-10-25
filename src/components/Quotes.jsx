@@ -3,8 +3,42 @@ import Pagination from "./Pagination";
 import LazyLoader from "./LazyLoader";
 import { fetchQuotes, postQuote } from "../api/quote.api";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useActionData, useLoaderData, useSubmit } from "react-router-dom";
+
+export const quotesQuery = (queryClient, page, config = {}) => ({
+  queryKey: ["quotes", page],
+  queryFn: async context => {
+    queryClient.cancelQueries(["quotes", page]);
+    const response = await fetchQuotes({ page }, { signal: context.signal });
+    return response.data;
+  },
+  keepPreviousData: true,
+  ...config,
+});
+
+export const quotesLoader = queryClient => async () => {
+  const query = quotesQuery(queryClient, 1);
+  return (
+    queryClient.getQueryData(query.queryKey) ??
+    (await queryClient.fetchQuery(query))
+  );
+};
+
+export const submitQuoteAction =
+  queryClient =>
+  async ({ request, params }) => {
+    const formData = await request.formData();
+    const payload = Object.fromEntries(formData);
+    const response = await postQuote(payload);
+    queryClient.invalidateQueries(["quotes", 1]);
+    return response.data;
+  };
 
 const Quotes = props => {
+  const quotesLoaderData = useLoaderData();
+  const submitQuote = useSubmit();
+  const actionData = useActionData();
+  console.log("action data", actionData);
   const [page, setPage] = useState(1);
   const [form, setForm] = useState({
     quote: "",
@@ -18,37 +52,9 @@ const Quotes = props => {
     refetch,
   } = useQuery(
     ["quotes", page],
-    async context => {
-      queryClient.cancelQueries(["quotes", page]);
-      const response = await fetchQuotes({ page }, { signal: context.signal });
-      return response.data;
-    },
-    {
-      keepPreviousData: true,
-    }
-  );
-
-  const {
-    mutate: initPostQuote,
-    isLoading: isPostQuoteLoading,
-    isError: isPostQuoteError,
-  } = useMutation(
-    async payload => {
-      return postQuote(payload);
-    },
-    {
-      onSuccess: context => {
-        setForm({
-          quote: "",
-          author: "",
-        });
-        queryClient.invalidateQueries(["quotes", 1]);
-        // queryClient.setQueryData(["quotes", 1], currentQuotes => [
-        //   context.data,
-        //   ...currentQuotes,
-        // ]);
-      },
-    }
+    quotesQuery(queryClient, page, {
+      initialData: quotesLoaderData,
+    })
   );
 
   const onFormChange = e => {
@@ -70,7 +76,14 @@ const Quotes = props => {
   const onSubmitQuote = async e => {
     e.preventDefault();
     if (!form.quote || !form.author) return;
-    initPostQuote(form);
+    await submitQuote(form, {
+      method: "post",
+      action: "/",
+    });
+    setForm({
+      quote: "",
+      author: "",
+    });
   };
 
   return (
@@ -91,15 +104,11 @@ const Quotes = props => {
             name="author"
             onChange={onFormChange}
           />
-          {isPostQuoteError ? (
-            <span className="text-red-700">Submit error</span>
-          ) : null}
           <button
             className="px-4 py-3 bg-blue-600 text-blue-50"
             onClick={onSubmitQuote}
-            disabled={isPostQuoteLoading}
           >
-            {isPostQuoteLoading ? "Loading..." : "Submit Quote"}
+            Submit Quote
           </button>
         </form>
       </div>
