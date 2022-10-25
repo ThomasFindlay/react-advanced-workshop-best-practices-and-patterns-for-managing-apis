@@ -43,15 +43,12 @@ const Quotes = props => {
 
   const onNext = () => {
     const nextPage = parseInt(page) + 1;
-    // setPage(nextPage);
-    // setPage(page => page + 1);
     navigate(`/${nextPage}`);
   };
 
   const onPrev = () => {
     if (page == 1) return;
     const prevPage = parseInt(page) - 1;
-    // setPage(prevPage);
     navigate(`/${prevPage}`);
   };
 
@@ -60,7 +57,7 @@ const Quotes = props => {
     if (!form.quote || !form.author) return;
     await submitQuote(form, {
       method: "post",
-      action: "/",
+      action: `/${page}`,
     });
     setForm({
       quote: "",
