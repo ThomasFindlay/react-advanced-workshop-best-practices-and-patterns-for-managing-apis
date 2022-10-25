@@ -1,26 +1,13 @@
 import "./App.css";
-import { Outlet, useNavigate, useParams } from "react-router-dom";
-import { useEffect } from "react";
-
-const Redirect = props => {
-  const navigate = useNavigate();
-  useEffect(() => {
-    navigate(props.to);
-  }, []);
-  return null;
-};
+import Quotes from "./components/Quotes";
 
 function App() {
-  const params = useParams();
-  const { page } = params;
-  return page ? (
+  return (
     <div className="App">
       <main className="container mx-auto mt-8 ">
-        <Outlet />
+        <Quotes />
       </main>
     </div>
-  ) : (
-    <Redirect to="/1" />
   );
 }
 

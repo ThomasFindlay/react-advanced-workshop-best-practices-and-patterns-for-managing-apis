@@ -1,38 +1,20 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import Pagination from "./Pagination";
 import LazyLoader from "./LazyLoader";
 import { fetchQuotes, postQuote } from "../api/quote.api";
-import {
-  useLoaderData,
-  useNavigate,
-  useNavigation,
-  useParams,
-  useSubmit,
-} from "react-router-dom";
-
-export const quotesLoader = async ({ params, signal }) => {
-  const { page } = params;
-  const response = await fetchQuotes({ page }, { signal });
-  return response.data;
-};
-
-export const submitQuoteAction = async ({ request, params }) => {
-  const formData = await request.formData();
-  const payload = Object.fromEntries(formData);
-  const response = await postQuote(payload);
-  return response.data;
-};
-
+const IDLE = "IDLE";
+const PENDING = "PENDING";
+const SUCCESS = "SUCCESS";
+const ERROR = "ERROR";
 const Quotes = props => {
-  const quotes = useLoaderData();
-  const submitQuote = useSubmit();
-  const navigation = useNavigation();
-  const navigate = useNavigate();
-  const { page } = useParams();
+  const [quotes, setQuotes] = useState([]);
+  const [page, setPage] = useState(1);
   const [form, setForm] = useState({
     quote: "",
     author: "",
   });
+  const abortRef = useRef({});
+  const [fetchQuotesStatus, setFetchQuotesStatus] = useState(IDLE);
 
   const onFormChange = e => {
     setForm(state => ({
@@ -41,29 +23,69 @@ const Quotes = props => {
     }));
   };
 
+  const initFetchQuotes = async page => {
+    try {
+      if (typeof abortRef.current === "function") {
+        abortRef.current();
+      }
+      const controller = new AbortController();
+      abortRef.current = controller.abort.bind(controller);
+      setFetchQuotesStatus(PENDING);
+      const quotesData = await fetchQuotes(
+        { page },
+        {
+          signal: controller.signal,
+        }
+      );
+
+      const num = Math.random();
+      if (num < 0.5) throw new Error("Oops, something went wrong");
+      setQuotes(quotesData.data);
+      setFetchQuotesStatus(SUCCESS);
+    } catch (error) {
+      setFetchQuotesStatus(ERROR);
+
+      if (error.name === "CanceledError") {
+        console.warn(`Request for page ${page} was cancelled`);
+      } else {
+        console.error(error);
+      }
+    }
+  };
+
   const onNext = () => {
-    const nextPage = parseInt(page) + 1;
-    navigate(`/${nextPage}`);
+    setPage(page => page + 1);
   };
 
   const onPrev = () => {
     if (page == 1) return;
-    const prevPage = parseInt(page) - 1;
-    navigate(`/${prevPage}`);
+    setPage(page => page - 1);
   };
 
   const onSubmitQuote = async e => {
     e.preventDefault();
     if (!form.quote || !form.author) return;
-    await submitQuote(form, {
-      method: "post",
-      action: `/${page}`,
-    });
+    const response = await postQuote(form);
+    if (response.data.id) {
+      const { id, quote, author } = response.data;
+      setQuotes(quotes => [
+        {
+          id,
+          quote,
+          author,
+        },
+        ...quotes,
+      ]);
+    }
     setForm({
       quote: "",
       author: "",
     });
   };
+
+  useEffect(() => {
+    initFetchQuotes(page);
+  }, [page]);
 
   return (
     <div className="max-w-xl mx-auto">
@@ -111,10 +133,20 @@ const Quotes = props => {
           );
         })}
       </div>
-      <LazyLoader show={navigation.state === "loading"}>
+      <LazyLoader show={fetchQuotesStatus === PENDING}>
         <p className="text-center">Loading data...</p>
       </LazyLoader>
-
+      {fetchQuotesStatus === ERROR ? (
+        <div className="text-center my-4 space-y-4">
+          <p className="text-red-700">Error loading data.</p>
+          <button
+            className="bg-blue-700 text-blue-100 p-4"
+            onClick={() => initFetchQuotes(page)}
+          >
+            Try again
+          </button>
+        </div>
+      ) : null}
       <Pagination page={page} onNext={onNext} onPrev={onPrev} />
     </div>
   );
