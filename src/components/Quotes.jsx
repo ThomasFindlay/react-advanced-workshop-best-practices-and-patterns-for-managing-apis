@@ -1,11 +1,8 @@
-import { useState, useTransition } from "react";
+import { useState } from "react";
 import Pagination from "./Pagination";
 import LazyLoader from "./LazyLoader";
 import { fetchQuotes, postQuote } from "../api/quote.api";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
-  redirect,
-  useActionData,
   useLoaderData,
   useNavigate,
   useNavigation,
