@@ -2,54 +2,37 @@ import { useState } from "react";
 import Pagination from "./Pagination";
 import LazyLoader from "./LazyLoader";
 import { fetchQuotes, postQuote } from "../api/quote.api";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import {
+  useLoaderData,
+  useNavigate,
+  useNavigation,
+  useParams,
+  useSubmit,
+} from "react-router-dom";
+
+export const quotesLoader = async ({ params, signal }) => {
+  const { page } = params;
+  const response = await fetchQuotes({ page }, { signal });
+  return response.data;
+};
+
+export const submitQuoteAction = async ({ request, params }) => {
+  const formData = await request.formData();
+  const payload = Object.fromEntries(formData);
+  const response = await postQuote(payload);
+  return response.data;
+};
 
 const Quotes = props => {
-  const [page, setPage] = useState(1);
+  const quotes = useLoaderData();
+  const submitQuote = useSubmit();
+  const navigation = useNavigation();
+  const navigate = useNavigate();
+  const { page } = useParams();
   const [form, setForm] = useState({
     quote: "",
     author: "",
   });
-  const queryClient = useQueryClient();
-  const {
-    data: quotes = [],
-    isLoading: isFetchQuotesLoading,
-    isError: isFetchQuotesError,
-    refetch,
-  } = useQuery(
-    ["quotes", page],
-    async context => {
-      queryClient.cancelQueries(["quotes", page]);
-      const response = await fetchQuotes({ page }, { signal: context.signal });
-      return response.data;
-    },
-    {
-      keepPreviousData: true,
-    }
-  );
-
-  const {
-    mutate: initPostQuote,
-    isLoading: isPostQuoteLoading,
-    isError: isPostQuoteError,
-  } = useMutation(
-    async payload => {
-      return postQuote(payload);
-    },
-    {
-      onSuccess: context => {
-        setForm({
-          quote: "",
-          author: "",
-        });
-        queryClient.invalidateQueries(["quotes", 1]);
-        // queryClient.setQueryData(["quotes", 1], currentQuotes => [
-        //   context.data,
-        //   ...currentQuotes,
-        // ]);
-      },
-    }
-  );
 
   const onFormChange = e => {
     setForm(state => ({
@@ -59,18 +42,27 @@ const Quotes = props => {
   };
 
   const onNext = () => {
-    setPage(page => page + 1);
+    const nextPage = parseInt(page) + 1;
+    navigate(`/${nextPage}`);
   };
 
   const onPrev = () => {
-    if (page === 1) return;
-    setPage(page => page - 1);
+    if (page == 1) return;
+    const prevPage = parseInt(page) - 1;
+    navigate(`/${prevPage}`);
   };
 
   const onSubmitQuote = async e => {
     e.preventDefault();
     if (!form.quote || !form.author) return;
-    initPostQuote(form);
+    await submitQuote(form, {
+      method: "post",
+      action: `/${page}`,
+    });
+    setForm({
+      quote: "",
+      author: "",
+    });
   };
 
   return (
@@ -91,15 +83,11 @@ const Quotes = props => {
             name="author"
             onChange={onFormChange}
           />
-          {isPostQuoteError ? (
-            <span className="text-red-700">Submit error</span>
-          ) : null}
           <button
             className="px-4 py-3 bg-blue-600 text-blue-50"
             onClick={onSubmitQuote}
-            disabled={isPostQuoteLoading}
           >
-            {isPostQuoteLoading ? "Loading..." : "Submit Quote"}
+            Submit Quote
           </button>
         </form>
       </div>
@@ -123,17 +111,10 @@ const Quotes = props => {
           );
         })}
       </div>
-      <LazyLoader show={isFetchQuotesLoading}>
+      <LazyLoader show={navigation.state === "loading"}>
         <p className="text-center">Loading data...</p>
       </LazyLoader>
-      {isFetchQuotesError ? (
-        <div className="text-center my-4 space-y-4">
-          <p className="text-red-700">Error loading data.</p>
-          <button className="bg-blue-700 text-blue-100 p-4" onClick={refetch}>
-            Try again
-          </button>
-        </div>
-      ) : null}
+
       <Pagination page={page} onNext={onNext} onPrev={onPrev} />
     </div>
   );

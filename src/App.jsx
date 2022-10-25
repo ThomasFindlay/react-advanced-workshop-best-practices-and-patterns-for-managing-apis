@@ -1,18 +1,26 @@
 import "./App.css";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import Quotes from "./components/Quotes.jsx";
+import { Outlet, useNavigate, useParams } from "react-router-dom";
+import { useEffect } from "react";
 
-const queryClient = new QueryClient();
+const Redirect = props => {
+  const navigate = useNavigate();
+  useEffect(() => {
+    navigate(props.to);
+  }, []);
+  return null;
+};
 
 function App() {
-  return (
-    <QueryClientProvider client={queryClient}>
-      <div className="App">
-        <main className="container mx-auto mt-8 ">
-          <Quotes />
-        </main>
-      </div>
-    </QueryClientProvider>
+  const params = useParams();
+  const { page } = params;
+  return page ? (
+    <div className="App">
+      <main className="container mx-auto mt-8 ">
+        <Outlet />
+      </main>
+    </div>
+  ) : (
+    <Redirect to="/1" />
   );
 }
 
