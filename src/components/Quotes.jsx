@@ -4,44 +4,21 @@ import Pagination from "./Pagination";
 
 const Quotes = props => {
   const [quotes, setQuotes] = useState([]);
-  const [page, setPage] = useState(1);
-  const abortRef = useRef({});
 
-  const initFetchQuotes = async page => {
+  const initFetchQuotes = async () => {
     try {
-      if (typeof abortRef.current === "function") {
-        abortRef.current();
-      }
-      const controller = new AbortController();
-      abortRef.current = controller.abort.bind(controller);
       const quotesData = await axios.get(
-        `http://localhost:4000/quotes?_page=${page}`,
-        {
-          signal: controller.signal,
-        }
+        `http://localhost:4000/quotes?_page=1}`
       );
       setQuotes(quotesData.data);
     } catch (error) {
-      if (error.name === "CanceledError") {
-        console.warn(`Request for page ${page} was cancelled`);
-      } else {
-        console.error(error);
-      }
+      console.error(error);
     }
   };
 
-  const onNext = () => {
-    setPage(page => page + 1);
-  };
-
-  const onPrev = () => {
-    if (page === 1) return;
-    setPage(page => page - 1);
-  };
-
   useEffect(() => {
-    initFetchQuotes(page);
-  }, [page]);
+    initFetchQuotes();
+  }, []);
 
   return (
     <div className="max-w-xl mx-auto">
@@ -66,7 +43,6 @@ const Quotes = props => {
           );
         })}
       </div>
-      <Pagination page={page} onNext={onNext} onPrev={onPrev} />
     </div>
   );
 };
