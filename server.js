@@ -20,6 +20,7 @@ server.post("/quotes", async (req, res) => {
     ...state,
     quotes,
   });
+  await router.db.write();
   return res.json(data);
 });
 
