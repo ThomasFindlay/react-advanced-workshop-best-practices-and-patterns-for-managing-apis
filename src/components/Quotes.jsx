@@ -13,27 +13,12 @@ import {
   useSubmit,
 } from "react-router-dom";
 
-export const quotesQuery = (queryClient, page, config = {}) => ({
-  queryKey: ["quotes", page],
-  queryFn: async context => {
-    queryClient.cancelQueries(["quotes", page]);
-    console.log("fetching quotes in the query", page);
-    const response = await fetchQuotes({ page }, { signal: context.signal });
-    return response.data;
-  },
-  keepPreviousData: true,
-  ...config,
-});
-
 export const quotesLoader =
   queryClient =>
-  async ({ params }) => {
-    const query = quotesQuery(queryClient, +params.page);
-
-    return (
-      queryClient.getQueryData(query.queryKey) ??
-      (await queryClient.fetchQuery(query))
-    );
+  async ({ params, signal }) => {
+    const { page } = params;
+    const response = await fetchQuotes({ page }, { signal });
+    return response.data;
   };
 
 export const submitQuoteAction =
@@ -42,28 +27,20 @@ export const submitQuoteAction =
     const formData = await request.formData();
     const payload = Object.fromEntries(formData);
     const response = await postQuote(payload);
-    queryClient.invalidateQueries(["quotes", 1]);
     return response.data;
   };
 
 const Quotes = props => {
-  const quotesLoaderData = useLoaderData();
+  const quotes = useLoaderData();
   const submitQuote = useSubmit();
-  const actionData = useActionData();
   const navigation = useNavigation();
   const navigate = useNavigate();
-  // console.log("navigation", navigation);
-  // console.log("action data", actionData);
-  // const [page, setPage] = useState(1);
   const { page } = useParams();
   const [form, setForm] = useState({
     quote: "",
     author: "",
   });
-  const queryClient = useQueryClient();
-  const { data: quotes = [] } = useQuery(
-    quotesQuery(queryClient, parseInt(page))
-  );
+
   const onFormChange = e => {
     setForm(state => ({
       ...state,

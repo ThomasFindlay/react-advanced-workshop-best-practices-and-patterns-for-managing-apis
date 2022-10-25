@@ -3,7 +3,6 @@ import { Outlet, useNavigate, useParams } from "react-router-dom";
 import { useEffect } from "react";
 
 const Redirect = props => {
-  console.log("redirect", props);
   const navigate = useNavigate();
   useEffect(() => {
     navigate(props.to);
