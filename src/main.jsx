@@ -23,8 +23,8 @@ const router = createBrowserRouter([
       {
         path: ":page",
         element: <Quotes />,
-        loader: quotesLoader(queryClient),
-        action: submitQuoteAction(queryClient),
+        loader: quotesLoader,
+        action: submitQuoteAction,
         errorElement: <ErrorBoundary />,
       },
     ],

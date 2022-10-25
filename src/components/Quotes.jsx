@@ -10,22 +10,18 @@ import {
   useSubmit,
 } from "react-router-dom";
 
-export const quotesLoader =
-  queryClient =>
-  async ({ params, signal }) => {
-    const { page } = params;
-    const response = await fetchQuotes({ page }, { signal });
-    return response.data;
-  };
+export const quotesLoader = async ({ params, signal }) => {
+  const { page } = params;
+  const response = await fetchQuotes({ page }, { signal });
+  return response.data;
+};
 
-export const submitQuoteAction =
-  queryClient =>
-  async ({ request, params }) => {
-    const formData = await request.formData();
-    const payload = Object.fromEntries(formData);
-    const response = await postQuote(payload);
-    return response.data;
-  };
+export const submitQuoteAction = async ({ request, params }) => {
+  const formData = await request.formData();
+  const payload = Object.fromEntries(formData);
+  const response = await postQuote(payload);
+  return response.data;
+};
 
 const Quotes = props => {
   const quotes = useLoaderData();
