@@ -1,14 +1,23 @@
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import Pagination from "./Pagination";
 import LazyLoader from "./LazyLoader";
 import { fetchQuotes, postQuote } from "../api/quote.api";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useActionData, useLoaderData, useSubmit } from "react-router-dom";
+import {
+  redirect,
+  useActionData,
+  useLoaderData,
+  useNavigate,
+  useNavigation,
+  useParams,
+  useSubmit,
+} from "react-router-dom";
 
 export const quotesQuery = (queryClient, page, config = {}) => ({
   queryKey: ["quotes", page],
   queryFn: async context => {
     queryClient.cancelQueries(["quotes", page]);
+    console.log("fetching quotes in the query", page);
     const response = await fetchQuotes({ page }, { signal: context.signal });
     return response.data;
   },
@@ -16,13 +25,16 @@ export const quotesQuery = (queryClient, page, config = {}) => ({
   ...config,
 });
 
-export const quotesLoader = queryClient => async () => {
-  const query = quotesQuery(queryClient, 1);
-  return (
-    queryClient.getQueryData(query.queryKey) ??
-    (await queryClient.fetchQuery(query))
-  );
-};
+export const quotesLoader =
+  queryClient =>
+  async ({ params }) => {
+    const query = quotesQuery(queryClient, +params.page);
+
+    return (
+      queryClient.getQueryData(query.queryKey) ??
+      (await queryClient.fetchQuery(query))
+    );
+  };
 
 export const submitQuoteAction =
   queryClient =>
@@ -38,25 +50,20 @@ const Quotes = props => {
   const quotesLoaderData = useLoaderData();
   const submitQuote = useSubmit();
   const actionData = useActionData();
-  console.log("action data", actionData);
-  const [page, setPage] = useState(1);
+  const navigation = useNavigation();
+  const navigate = useNavigate();
+  // console.log("navigation", navigation);
+  // console.log("action data", actionData);
+  // const [page, setPage] = useState(1);
+  const { page } = useParams();
   const [form, setForm] = useState({
     quote: "",
     author: "",
   });
   const queryClient = useQueryClient();
-  const {
-    data: quotes = [],
-    isLoading: isFetchQuotesLoading,
-    isError: isFetchQuotesError,
-    refetch,
-  } = useQuery(
-    ["quotes", page],
-    quotesQuery(queryClient, page, {
-      initialData: quotesLoaderData,
-    })
+  const { data: quotes = [] } = useQuery(
+    quotesQuery(queryClient, parseInt(page))
   );
-
   const onFormChange = e => {
     setForm(state => ({
       ...state,
@@ -65,12 +72,17 @@ const Quotes = props => {
   };
 
   const onNext = () => {
-    setPage(page => page + 1);
+    const nextPage = parseInt(page) + 1;
+    // setPage(nextPage);
+    // setPage(page => page + 1);
+    navigate(`/${nextPage}`);
   };
 
   const onPrev = () => {
-    if (page === 1) return;
-    setPage(page => page - 1);
+    if (page == 1) return;
+    const prevPage = parseInt(page) - 1;
+    // setPage(prevPage);
+    navigate(`/${prevPage}`);
   };
 
   const onSubmitQuote = async e => {
@@ -132,17 +144,10 @@ const Quotes = props => {
           );
         })}
       </div>
-      <LazyLoader show={isFetchQuotesLoading}>
+      <LazyLoader show={navigation.state === "loading"}>
         <p className="text-center">Loading data...</p>
       </LazyLoader>
-      {isFetchQuotesError ? (
-        <div className="text-center my-4 space-y-4">
-          <p className="text-red-700">Error loading data.</p>
-          <button className="bg-blue-700 text-blue-100 p-4" onClick={refetch}>
-            Try again
-          </button>
-        </div>
-      ) : null}
+
       <Pagination page={page} onNext={onNext} onPrev={onPrev} />
     </div>
   );

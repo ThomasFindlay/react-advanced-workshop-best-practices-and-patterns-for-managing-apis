@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 import ReactDOM from "react-dom/client";
 import App from "./App";
 import {
@@ -23,7 +23,7 @@ const router = createBrowserRouter([
     element: <App />,
     children: [
       {
-        path: "",
+        path: ":page",
         element: <Quotes />,
         loader: quotesLoader(queryClient),
         action: submitQuoteAction(queryClient),
